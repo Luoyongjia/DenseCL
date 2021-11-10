@@ -26,7 +26,7 @@ class Namespace(object):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config_file', type=str, default="./configs/denseCL_cifar10.yaml", help="config film, xxxx.yaml")
+    parser.add_argument('--config_file', type=str, default="./configs/moco_cifar10.yaml", help="config film, xxxx.yaml")
 
     args = parser.parse_args()
 

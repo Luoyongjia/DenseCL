@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import resnet50, resnet18
 
-from .backbone import resnet18_cifar
+from .backbones import resnet18_cifar
 
 
 def contrastiveLoss(pos, neg, temperature=0.1):
@@ -25,22 +25,21 @@ def contrastiveLoss(pos, neg, temperature=0.1):
     return losses
 
 
-class projection_MLP(nn.Module):
+class neck_Linear(nn.Module):
     """
-    The non-linear neck, fc-relu-fc
+    The non-linear neck, fc
     """
-    def __init__(self, in_dim, out_dim=128):
-        super().__init__()
-        hidden_dim = in_dim
-        self.layer1 = nn.Sequential(
-            nn.Linear(in_dim, hidden_dim),
-            nn.ReLU(inplace=True)
-        )
-        self.layer2 = nn.Linear(hidden_dim, out_dim)
+    def __init__(self, in_dim, out_dim=128, with_avg_pool=True):
+        super(neck_Linear, self).__init__()
+        self.avgpool = with_avg_pool
+        if with_avg_pool:
+            self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(in_dim, out_dim)
 
     def forward(self, x):
-        x = self.layer1(x)
-        x = self.layer2(x)
+        if self.avgpool:
+            x = self.avgpool(x)
+        x = self.fc(x.view(x.size(0), -1))
         return x
 
 
@@ -48,30 +47,34 @@ class MoCo(nn.Module):
     """
        Build a MoCo model with: a query encoder, a key encoder, and a queue
    """
-    def __init__(self, backbone=resnet50()):
+    def __init__(self, backbone=resnet50(), K=65536, m=0.999, T=0.07):
         super(MoCo, self).__init__()
 
         # K: queue size, m: momentum of updating keys, T: softmax temperature, dim: feature dim
-        self.K = 65536
-        self.m = 0.999
-        self.T = 0.07
+        self.K = K
+        self.m = m
+        self.T = T
         self.dim = backbone.output_dim
 
         # mpl: whether using mlp head
         self.mlp = False
 
         # create the encoders
-        self.encoder_q = backbone
-        self.encoder_k = backbone
+        self.encoder_q = nn.Sequential(backbone,
+                                       neck_Linear(backbone.output_dim)
+                                       )
+        self.encoder_k = nn.Sequential(backbone,
+                                       neck_Linear(backbone.output_dim))
 
-        if self.mlp:
-            self.encoder_q.fc = nn.Sequential(projection_MLP(self.dim), self.encoder_q.fc)
-            self.encoder_k.fc = nn.Sequential(projection_MLP(self.dim), self.encoder_k.fc)
+        # init param of linear neck
+        for m in self.encoder_q[1]():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
         # initial param of encoder_k
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
-            param_k.data.copy_(param_q.data)  # initialize
-            param_k.requires_grad = False  # not update by gradient
+            param_k.data.copy_(param_q.data)
+            param_k.requires_grad = False
 
         # create the queue
         self.register_buffer("queue", torch.randn(self.dim, self.K))

@@ -1,6 +1,7 @@
 import argparse
-import yaml
-import shutil
+import random
+import numpy as np
+import torch
 import re
 
 import yaml
@@ -22,6 +23,18 @@ class Namespace(object):
 
     def __getattr__(self, attribute):
         raise AttributeError(f"Can not find {attribute} in namespace. Please write {attribute} in config file!")
+
+
+def set_deterministic(seed):
+    # seed by default is None
+    if seed is not None:
+        print(f"Deterministic with seed = {seed}")
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 
 def get_args():
@@ -46,7 +59,7 @@ def get_args():
 
     vars(args)['aug_kwargs'] = {
         'name': args.model.name,
-        'image_size': args.data_dir,
+        'image_size': args.dataset.image_size,
     }
     vars(args)['dataset_kwargs'] = {
         'dataset': args.dataset.name,

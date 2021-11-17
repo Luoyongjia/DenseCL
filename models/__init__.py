@@ -10,7 +10,7 @@ def get_backbone(backbone, feature_dim=128, castrate=True):
     backbone = eval('{}(num_classes={})'.format(backbone, feature_dim))
 
     if castrate:
-        backbone.output_dim = feature_dim
+        backbone.output_dim = backbone.fc.in_feature
         backbone.fc = torch.nn.Identity()
 
     return backbone

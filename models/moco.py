@@ -59,17 +59,14 @@ class MoCo(nn.Module):
         # mpl: whether using mlp head
         self.mlp = False
 
-        # create the encoders
-        self.encoder_q = nn.Sequential(backbone,
-                                       neck_Linear(backbone.output_dim)
-                                       )
-        self.encoder_k = nn.Sequential(backbone,
-                                       neck_Linear(backbone.output_dim))
+        if self.mlp:
+            self.encoder_q.fc = nn.Sequential(neck_Linear(in_dim=self.dim, out_dim=self.dim), self.encoder_q.fc)
+            self.encoder_k.fc = nn.Sequential(neck_Linear(self.dim, out_dim=self.dim), self.encoder_k.fc)
 
-        # init param of linear neck
-        for m in self.encoder_q[1]():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        # initial param of encoder_k
+        for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
+            param_k.data.copy_(param_q.data)  # initialize
+            param_k.requires_grad = False  # not update by gradient
 
         # initial param of encoder_k
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):

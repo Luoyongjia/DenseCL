@@ -1,15 +1,15 @@
 name: moco-cifar10
 exp_num: 0
 evl_frequent: 50
-device: cuda
+device: cpu
 checkpoint: None
 res_dir: ./res
-
 dataset:
   name: cifar10
+  download: False
   image_size: 32
   num_workers: 4
-
+  data_dir: '/Users/luoyongjia/Research/Data/cifar10'
 model:
   name: moco
   backbone: resnet18_cifar
@@ -18,40 +18,32 @@ model:
     K: 65536
     m: 0.999
     T: 0.07
-
 train:
   optimizer:
     name: sgd
     weight_decay: 1e-4
     momentum: 0.9
-
   warmup_lr: 0
   base_lr: 0.03
   final_lr: 0
-
   warmup_epochs: 10
   epochs: 800 # the sum epoch, influence the lr decay
-
   batch_size: 512
-
   knn_monitor: True
   knn_interval: 1
   knn_k: 200
-
 eval: # linear evaluation, False will turn off automativ evaluation after training
   optimizer:
     name: sgd
     wight_decay: 0
     momentum: 0.9
-
   warmup_lr: 0
   base_lr: 30
   final_lr: 0
-
   batch_size: 512
   epochs: 100
-
 logger:
   tensorboard: True
   matplotlib: True
-
+debug: False
+debug_subset_size: 100

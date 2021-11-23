@@ -1,12 +1,13 @@
 from torchvision import transforms
 from .GaussianBlur import GaussianBlur
 
-IMAGENETNORM = [[0.485, 0.456, 0.406],[0.229, 0.224, 0.225]]
-CIFAR10NORM = [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]]
+IMAGENET = [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+CIFAR10 = [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]]
+TINYIMAGENET = [[0.4802, 0.4481, 0.3975], [0.2770, 0.2691, 0.2821]]
 
 
 class transform_denseCL:
-    def __init__(self, image_size, normalize=CIFAR10NORM):
+    def __init__(self, image_size, normalize=CIFAR10):
         image_size = 224 if image_size is None else image_size
         p_blur = 0.5 if image_size > 32 else 0
         self.transform = transforms.Compose([

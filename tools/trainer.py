@@ -18,7 +18,7 @@ def load_checkpoint(ckpt_path, model):
         return 0
 
 
-def train(train_loader, memo_loader, test_loader, model, optimizer, scheduler, logger, args):
+def train(train_loader, memo_loader, test_loader, model, optimizer, scheduler, logger, writer, args):
     epoch_pre = load_checkpoint(model, args.checkpoint)
     args.train.epoches = args.train.epoches - epoch_pre
 
@@ -41,28 +41,31 @@ def train(train_loader, memo_loader, test_loader, model, optimizer, scheduler, l
             data_dict.update({'lr': scheduler.get_lr()})
 
             local_progress.set_postfix(data_dict)
-            logger.update_scalers(data_dict)
+            writer.update_scalers(data_dict)
 
-        if (epoch + 1 % args.evl_frequent) == 0:
+        if epoch % args.evl_frequent == 0:
             accuracy = knn_monitor(model.module.backbone, memo_loader, test_loader,
                                    k=min(args.train.knn_k, len(memo_loader.dataset)))
+            logger.info(f'[{epoch} / {args.train.epoches}]: accuracy: {accuracy}, lr:{scheduler.get_lr()}')
         epoch_dict = {"epoch": epoch, "accuracy": accuracy}
         global_progress.set_postfix(epoch_dict)
-        logger.update_scalers(epoch_dict)
+        writer.update_scalers(epoch_dict)
 
         # save checkpoints
-        ckpt_path = os.path.join(args.ckpt_path, f'{args.exp_num}/checkpoints/ckpt-{epoch + 1}.pth')
+        ckpt_path = os.path.join(args.ckpt_path, f'{args.exp_num}/checkpoints/ckpt-{epoch}.pth')
         torch.save({
             'epoch': epoch,
-            'state_dict': model.state_dict()
+            'model': model.state_dict(),
+            'scheduler': scheduler.state_dict(),
+            'optimizer': optimizer.state_dict(),
         }, ckpt_path)
 
     # save model
     model_path = os.path.join(args.ckpt_path, f'{args.exp_num}/checkpoints/ckpt-last.pth')
     torch.save({
         'epoch': args.train.epoches,
-        'state_dict': model.state_dict()
+        'model': model.state_dict()
     }, model_path)
-    print(f"Model saved to {model_path}")
-    print(f"Spent {((time.time() - start_time)/3600):.4f} h")
+    logger.info(f"Model saved to {model_path}")
+    logger.info(f"Spent {((time.time() - start_time)/3600):.4f} h")
 

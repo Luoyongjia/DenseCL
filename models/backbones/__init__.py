@@ -1,1 +1,1 @@
-from Resnet_cifar import resnet18_cifar
+from .Resnet_cifar import resnet18_cifar

@@ -64,7 +64,7 @@ class DenseCL(nn.Module):
     """
        Build a MoCo model with: a query encoder, a key encoder, and a queue
    """
-    def __init__(self, backbone=resnet50(), K=65536, m=0.999, T=0.07, loss_lambda=0.5, num_grid=7):
+    def __init__(self, backbone=resnet50(), feature_dim=128, K=65536, m=0.999, T=0.07, loss_lambda=0.5, num_grid=7):
         super(DenseCL, self).__init__()
 
         # K: queue size, m: momentum of updating keys, T: softmax temperature, dim: feature dim
@@ -73,13 +73,14 @@ class DenseCL(nn.Module):
         self.T = T
         self.loss_lambda = loss_lambda
         self.dim = backbone.output_dim
+        self.out_dim = feature_dim
 
         # create the encoders
         self.encoder_q = backbone
         self.encoder_k = backbone
 
-        self.encoder_q.fc = nn.Sequential(projection_conv(in_dim=self.dim, s=num_grid), self.encoder_q.fc)
-        self.encoder_k.fc = nn.Sequential(projection_conv(in_dim=self.dim, s=num_grid), self.encoder_k.fc)
+        self.encoder_q.fc = nn.Sequential(projection_conv(in_dim=self.dim, out_dim=self.out_dim, s=num_grid), self.encoder_q.fc)
+        self.encoder_k.fc = nn.Sequential(projection_conv(in_dim=self.dim, out_dim=self.out_dim, s=num_grid), self.encoder_k.fc)
 
         # initial param of encoder_k
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
@@ -227,8 +228,7 @@ class DenseCL(nn.Module):
         losses = dict()
         losses['loss_contra_single'] = contrastiveLoss(l_pos, l_neg, temperature=self.T)
         losses['loss_contra_dense'] = contrastiveLoss(l_pos_dense, l_neg_dense, temperature=self.T)
-        losses['loss_contrastive'] = (1 - self.loss_lambda) * losses['loss_contra_single'] + \
-                                     self.loss_lambda * losses['loss_contra_dense']
+        losses['loss_contrastive'] = (1 - self.loss_lambda) * losses['loss_contra_single'] + self.loss_lambda * losses['loss_contra_dense']
         self._dequeue_and_enqueue(k)
         self._dequeue_and_enqueue(k2)
 

@@ -62,10 +62,10 @@ def get_args():
         'image_size': args.dataset.image_size,
     }
     vars(args)['dataset_kwargs'] = {
-        'dataset': args.dataset.name,
+        'name': args.dataset.name,
         'data_dir': args.dataset.data_dir,
-        'download': args.download,
-        'debug_subset_size': args.debug.subset_size if args.debug else None,
+        'download': args.dataset.download,
+        'debug_subset_size': args.subset_size if args.debug else None,
     }
     vars(args)['dataloader_kwargs'] = {
         'drop_last': True,

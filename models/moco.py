@@ -47,7 +47,7 @@ class MoCo(nn.Module):
     """
        Build a MoCo model with: a query encoder, a key encoder, and a queue
    """
-    def __init__(self, backbone=resnet50(), K=65536, m=0.999, T=0.07):
+    def __init__(self, backbone=resnet50(), feature_dim=128, K=65536, m=0.999, T=0.07):
         super(MoCo, self).__init__()
 
         # K: queue size, m: momentum of updating keys, T: softmax temperature, dim: feature dim
@@ -55,13 +55,16 @@ class MoCo(nn.Module):
         self.m = m
         self.T = T
         self.dim = backbone.output_dim
+        self.out_dim = feature_dim
 
+        self.encoder_q = backbone
+        self.encoder_k = backbone
         # mpl: whether using mlp head
         self.mlp = False
 
         if self.mlp:
-            self.encoder_q.fc = nn.Sequential(neck_Linear(in_dim=self.dim, out_dim=self.dim), self.encoder_q.fc)
-            self.encoder_k.fc = nn.Sequential(neck_Linear(self.dim, out_dim=self.dim), self.encoder_k.fc)
+            self.encoder_q.fc = nn.Sequential(neck_Linear(in_dim=self.dim, out_dim=self.out_dim), self.encoder_q.fc)
+            self.encoder_k.fc = nn.Sequential(neck_Linear(self.dim, out_dim=self.out_dim), self.encoder_k.fc)
 
         # initial param of encoder_k
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):

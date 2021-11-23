@@ -2,8 +2,11 @@ import matplotlib.pyplot as plt
 from tensorboardX import SummaryWriter
 from torch import Tensor
 from collections import OrderedDict
+import logging
 import os
+import time
 import matplotlib
+from termcolor import colored
 matplotlib.use('Agg')
 
 
@@ -31,7 +34,7 @@ class Plotter(object):
         plt.close()
 
 
-class Logger(object):
+class writer(object):
     def __init__(self, log_dir, tensorboard=True, matplotlib=True):
         self.reset()
 
@@ -66,3 +69,21 @@ class Logger(object):
         if self.plotter:
             self.plotter.update(ordered_dict)
             self.plotter.save(os.path.join(self.log_dir, 'plotter.svg'))
+
+
+def Logger(name, path):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+    rq = time.strftime('%Y%m%d%H%M', time.localtime(time.time()))[:-4]
+
+    logName = path + rq + '.log'
+    fh = logging.FileHandler(logName, mode='a')
+    fh.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter("[%(asctime)s] %(name)s %(levelname)s: %(message)s", datefmt="%Y/%m/%d %H:%M:%S")
+    fh.setFormatter(formatter)
+
+    logger.addHandler(fh)
+    return logger
+
+

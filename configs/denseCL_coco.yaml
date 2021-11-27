@@ -35,13 +35,14 @@ train:
 eval: # linear evaluation, False will turn off automativ evaluation after training
   optimizer:
     name: sgd
-    wight_decay: 0
+    weight_decay: 0
     momentum: 0.9
   warmup_lr: 0
-  base_lr: 30
+  base_lr: 3
   final_lr: 0
   batch_size: 512
   epochs: 100
+  warmup_epochs: 0
 logger:
   tensorboard: True
   matplotlib: True

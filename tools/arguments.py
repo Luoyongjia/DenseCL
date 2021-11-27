@@ -39,7 +39,7 @@ def set_deterministic(seed):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config_file', type=str, default="./configs/moco_cifar10.yaml", help="config film, xxxx.yaml")
+    parser.add_argument('--config_file', type=str, default="./configs/denseCL_tinyImagenet.yaml", help="config film, xxxx.yaml")
 
     args = parser.parse_args()
 
@@ -49,7 +49,7 @@ def get_args():
 
     if args.debug:
         if args.train:
-            args.train.batch_size = 2
+            args.train.batch_size = 4
             args.train.epochs = 1
         if args.eval:
             args.eval.batch_size = 2

@@ -19,7 +19,7 @@ def get_dataset(name, data_dir, transform, train=True, download=False, debug_sub
 
     if debug_subset_size is not None:
         # for debug, only take one batch
-        dataset = torch.utils.dataset.Subset(dataset, range(0, debug_subset_size))
+        dataset = torch.utils.data.Subset(dataset, range(0, debug_subset_size))
         dataset.classes = dataset.dataset.classes
         dataset.targets = dataset.dataset.targets
 

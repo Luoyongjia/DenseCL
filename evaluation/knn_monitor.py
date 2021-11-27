@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from tqdm import tqdm
 import torch.nn.functional as F
 
@@ -9,10 +10,15 @@ def knn_monitor(net, memory_data_loader, test_data_loader, k=200, t=0.1, hide_pr
     net.eval()
     classes = len(memory_data_loader.dataset.classes)
     total_top1, total_top5, total_num, feature_bank = 0.0, 0.0, 0, []
+    layer_get_feature = nn.AdaptiveAvgPool2d((1, 1))
     with torch.no_grad():
         # generate feature bank
         for data, target in tqdm(memory_data_loader, desc='Feature extracting', leave=False, disable=hide_progress):
             feature = net(data.cuda(non_blocking=True))
+            # for the feature map output.
+            feature = layer_get_feature(feature)
+            feature = feature.reshape(feature.size(0), -1)
+
             feature = F.normalize(feature, dim=1)
             feature_bank.append(feature)
         # [D, N]
@@ -24,6 +30,10 @@ def knn_monitor(net, memory_data_loader, test_data_loader, k=200, t=0.1, hide_pr
         for data, target in test_bar:
             data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
             feature = net(data)
+            # for the feature map output.
+            feature = layer_get_feature(feature)
+            feature = feature.reshape(feature.size(0), -1)
+
             feature = F.normalize(feature, dim=1)
 
             pred_labels = knn_predict(feature, feature_bank, feature_labels, classes, k, t)

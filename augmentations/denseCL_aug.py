@@ -7,7 +7,7 @@ TINYIMAGENET = [[0.4802, 0.4481, 0.3975], [0.2770, 0.2691, 0.2821]]
 
 
 class transform_denseCL:
-    def __init__(self, image_size, normalize=CIFAR10):
+    def __init__(self, image_size, normalize=TINYIMAGENET):
         image_size = 224 if image_size is None else image_size
         p_blur = 0.5 if image_size > 32 else 0
         self.transform = transforms.Compose([

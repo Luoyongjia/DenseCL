@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import resnet50, resnet18
+# from torchvision.models import resnet50, resnet18
 
-from .backbones import resnet18_cifar
+from .backbones import resnet18_cifar, resnet18, resnet50
 
 
 def contrastiveLoss(pos, neg, temperature=0.1):
@@ -57,15 +57,26 @@ class MoCo(nn.Module):
         self.dim = backbone.output_dim
         self.out_dim = feature_dim
 
-        self.encoder_q = backbone
-        self.encoder_k = backbone
-        # mpl: whether using mlp head
-        self.mlp = False
+        # self.encoder_q = backbone
+        # self.encoder_k = backbone
+        # # mpl: whether using mlp head
+        # self.mlp = False
+        #
+        # if self.mlp:
+        #     self.encoder_q.fc = nn.Sequential(neck_Linear(in_dim=self.dim, out_dim=self.out_dim), self.encoder_q.fc)
+        #     self.encoder_k.fc = nn.Sequential(neck_Linear(self.dim, out_dim=self.out_dim), self.encoder_k.fc)
 
-        if self.mlp:
-            self.encoder_q.fc = nn.Sequential(neck_Linear(in_dim=self.dim, out_dim=self.out_dim), self.encoder_q.fc)
-            self.encoder_k.fc = nn.Sequential(neck_Linear(self.dim, out_dim=self.out_dim), self.encoder_k.fc)
+        self.backbone = backbone
+        self.projector = neck_Linear(in_dim=self.dim, out_dim=self.out_dim)
 
+        self.encoder_q = nn.Sequential(
+            self.backbone,
+            self.projector
+        )
+        self.encoder_k = nn.Sequential(
+            self.backbone,
+            self.projector
+        )
         # initial param of encoder_k
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
@@ -77,7 +88,7 @@ class MoCo(nn.Module):
             param_k.requires_grad = False
 
         # create the queue
-        self.register_buffer("queue", torch.randn(self.dim, self.K))
+        self.register_buffer("queue", torch.randn(self.out_dim, self.K))
         self.queue = F.normalize(self.queue, dim=0)
 
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
@@ -167,13 +178,13 @@ class MoCo(nn.Module):
             self._momentum_update_key_encoder()
 
             # shuffle for making use of BN
-            im_k, idx_unshffle = self._batch_shuffle_ddp(img_k)
+            # img_k, idx_unshffle = self._batch_shuffle_ddp(img_k)
 
-            k = self.encoder_k(im_k)[0]     # keys: [N, C]
+            k = self.encoder_k(img_k)[0]     # keys: [N, C]
             k = F.normalize(k, dim=1)
 
             # undo shuffle
-            k = self._batch_unshuffle_ddp(k, idx_unshffle)
+            # k = self._batch_unshuffle_ddp(k, idx_unshffle)
 
         # compute logits
         # Einstein sum is more intuitive
@@ -196,9 +207,10 @@ def concat_all_gather(tensor):
     Performs all_gather operation on the provided tensors.
     *** Warning ***: torch.distributed.all_gather has no gradient.
     """
-    tensors_gather = [torch.ones_like(tensor)
-                      for _ in range(torch.distributed.get_world_size())]
-    torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
+    # tensors_gather = [torch.ones_like(tensor)
+    #                   for _ in range(torch.distributed.get_world_size())]
+    # torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
+    tensors_gather = [torch.ones_like(tensor)]
 
     output = torch.cat(tensors_gather, dim=0)
     return output

@@ -1,6 +1,7 @@
 from .moco_aug import transform_moco
 from .denseCL_aug import transform_denseCL
 from .eval_aug import transform_evl
+from .single_aug import transform_single
 
 
 def get_aug(name='denseCL', image_size=224, train=True, train_classifier=None):
@@ -12,7 +13,9 @@ def get_aug(name='denseCL', image_size=224, train=True, train_classifier=None):
         elif name == 'vapss':
             augmentations = transform_denseCL(image_size)
         else:
-            raise Exception
+            raise NotImplementedError
+    else:
+        augmentations = transform_single(image_size, train=train_classifier)
 
-        return augmentations
+    return augmentations
 

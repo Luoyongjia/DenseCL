@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from torch import Tensor
 from collections import OrderedDict
 import logging
 import os
 import time
 import matplotlib
-from termcolor import colored
+
 matplotlib.use('Agg')
 
 
@@ -36,14 +36,14 @@ class Plotter(object):
 
 class writer(object):
     def __init__(self, log_dir, tensorboard=True, matplotlib=True):
-        self.reset()
+        self.reset(log_dir=log_dir, tensorboard=tensorboard, matplotlib=matplotlib)
 
     def reset(self, log_dir=None, tensorboard=True, matplotlib=True):
         if log_dir is not None:
             self.log_dir = log_dir
 
         if tensorboard:
-            self.writer = SummaryWriter(log_dir=self.log_dir)
+            self.writer = SummaryWriter(log_dir=log_dir)
         else:
             self.writer = None
 
@@ -55,7 +55,7 @@ class writer(object):
         self.counter = OrderedDict()
 
     def update_scalers(self, ordered_dict):
-        for key, value in ordered_dict:
+        for key, value in ordered_dict.items():
             if isinstance(value, Tensor):
                 ordered_dict[key] = value.item()
             if self.counter.get(key) is None:

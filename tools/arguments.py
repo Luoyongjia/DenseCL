@@ -50,7 +50,7 @@ def get_args():
     if args.debug:
         if args.train:
             args.train.batch_size = 4
-            args.train.epochs = 1
+            args.train.epochs = 10
         if args.eval:
             args.eval.batch_size = 2
             # retrain 1 epoch

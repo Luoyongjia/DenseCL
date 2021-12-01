@@ -6,7 +6,7 @@ TINYIMAGENET = [[0.4802, 0.4481, 0.3975], [0.2770, 0.2691, 0.2821]]
 
 
 class transform_moco:
-    def __init__(self, image_size, normalize=CIFAR10):
+    def __init__(self, image_size, normalize=TINYIMAGENET):
         self.transform = transforms.Compose([
             transforms.RandomResizedCrop(image_size, scale=(0.2, 1.0)),
             transforms.RandomHorizontalFlip(),

@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# from torchvision.models import resnet50, resnet18
+from torchvision.models import resnet50, resnet18
 
-from .backbones import resnet18_cifar, resnet18, resnet50
+from .backbones import resnet18_cifar, get_backbone
 
 
 def contrastiveLoss(pos, neg, temperature=0.1):
@@ -19,8 +19,7 @@ def contrastiveLoss(pos, neg, temperature=0.1):
     logits = torch.cat((pos, neg), dim=1)
     logits /= temperature
     labels = torch.zeros((N, ), dtype=torch.long).cuda()
-    losses = dict()
-    losses['loss_contrastive'] = criterion(logits, labels)
+    losses = criterion(logits, labels)
 
     return losses
 
@@ -47,15 +46,13 @@ class MoCo(nn.Module):
     """
        Build a MoCo model with: a query encoder, a key encoder, and a queue
    """
-    def __init__(self, backbone=resnet50(), feature_dim=128, K=65536, m=0.999, T=0.07):
+    def __init__(self, backbone='resnet50', feature_dim=128, K=65536, m=0.999, T=0.07):
         super(MoCo, self).__init__()
 
         # K: queue size, m: momentum of updating keys, T: softmax temperature, dim: feature dim
         self.K = K
         self.m = m
         self.T = T
-        self.dim = backbone.output_dim
-        self.out_dim = feature_dim
 
         # self.encoder_q = backbone
         # self.encoder_k = backbone
@@ -66,26 +63,28 @@ class MoCo(nn.Module):
         #     self.encoder_q.fc = nn.Sequential(neck_Linear(in_dim=self.dim, out_dim=self.out_dim), self.encoder_q.fc)
         #     self.encoder_k.fc = nn.Sequential(neck_Linear(self.dim, out_dim=self.out_dim), self.encoder_k.fc)
 
-        self.backbone = backbone
-        self.projector = neck_Linear(in_dim=self.dim, out_dim=self.out_dim)
+        self.backbone_q = get_backbone(backbone)
+        self.backbone_k = get_backbone(backbone)
+
+        self.dim = self.backbone_q.output_dim
+        self.out_dim = feature_dim
+
+        self.projector_q = neck_Linear(in_dim=self.dim, out_dim=self.out_dim)
+        self.projector_k = neck_Linear(in_dim=self.dim, out_dim=self.out_dim)
 
         self.encoder_q = nn.Sequential(
-            self.backbone,
-            self.projector
+            self.backbone_q,
+            self.projector_q
         )
         self.encoder_k = nn.Sequential(
-            self.backbone,
-            self.projector
+            self.backbone_k,
+            self.projector_k
         )
+
         # initial param of encoder_k
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
             param_k.requires_grad = False  # not update by gradient
-
-        # initial param of encoder_k
-        for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
-            param_k.data.copy_(param_q.data)
-            param_k.requires_grad = False
 
         # create the queue
         self.register_buffer("queue", torch.randn(self.out_dim, self.K))
@@ -164,7 +163,7 @@ class MoCo(nn.Module):
     def forward(self, img_q, img_k):
         """
 
-        :param img_q(Tensor): Input of a batch of query images (N, C, H, W)
+        :param img_q: Input of a batch of query images (N, C, H, W)
         :param img_k: Input of a batch of key images (N, C, H, W)
         :return: dict[str, Tensor]: A dictionary of loss components.
         """
@@ -180,7 +179,7 @@ class MoCo(nn.Module):
             # shuffle for making use of BN
             # img_k, idx_unshffle = self._batch_shuffle_ddp(img_k)
 
-            k = self.encoder_k(img_k)[0]     # keys: [N, C]
+            k = self.encoder_k(img_k)    # keys: [N, C]
             k = F.normalize(k, dim=1)
 
             # undo shuffle
@@ -191,13 +190,13 @@ class MoCo(nn.Module):
         # positive logits: Nx1
         l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
         # negative logits: NxK
-        l_neg = torch.einsum('nv, ck->nk', [q, self.queue.clone().detach()])
+        l_neg = torch.einsum('nc, ck->nk', [q, self.queue.clone().detach()])
 
         # logits: Nx(1+K)
         losses = contrastiveLoss(l_pos, l_neg, temperature=self.T)
-
         self._dequeue_and_enqueue(k)
-        return losses
+
+        return {'loss': losses}
 
 
 # utils
@@ -210,8 +209,9 @@ def concat_all_gather(tensor):
     # tensors_gather = [torch.ones_like(tensor)
     #                   for _ in range(torch.distributed.get_world_size())]
     # torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
-    tensors_gather = [torch.ones_like(tensor)]
+    # tensors_gather = [torch.ones_like(tensor)]
 
-    output = torch.cat(tensors_gather, dim=0)
+    # output = torch.cat(tensors_gather, dim=0)
+    output = torch.ones_like(tensor)
     return output
 

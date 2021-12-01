@@ -30,7 +30,7 @@ def main(args):
         os.mkdir(f'./res/{args.name}/{args.exp_num}/logs/tensorboard')
 
     logPath = f'./res/{args.name}/{args.exp_num}/logs/'
-    writerPath = f'/res/{args.name}/{args.exp_num}/logs/tensorboard'
+    writerPath = f'./res/{args.name}/{args.exp_num}/logs/tensorboard'
 
     logger = Logger(f'{args.name}/{args.exp_num}', logPath)
     boardwriter = writer(log_dir=writerPath)
@@ -94,7 +94,7 @@ def main(args):
         args.train.base_lr,
         args.train.final_lr,
         len(train_loader),
-        constant_predictor_lr=True      # simsiam section 4.2 predictor
+        constant_predictor_lr=False      # simsiam section 4.2 predictor
     )
 
     train(train_loader, memory_loader, test_loader, model, optimizer, lr_scheduler, logger, boardwriter, args)

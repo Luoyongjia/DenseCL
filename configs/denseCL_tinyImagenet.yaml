@@ -1,13 +1,14 @@
 name: denseCL-tinyImagenet
 exp_num: 0
-evl_frequent: 20
+evl_frequent: 1
+save_frequent: 20
 device: cuda
 checkpoint: None
 res_dir: './res'
 dataset:
   name: tiny-imagenet
   download: False
-  image_size: 32
+  image_size: 64
   num_workers: 4
   data_dir: '/root/data/lyj/data/tiny-imagenet-200'
 model:
@@ -17,7 +18,7 @@ model:
   hyperparameter:
     K: 65536
     m: 0.999
-    T: 0.2
+    T: 0.07
     loss_lambda: 0.5
 train:
   optimizer:
@@ -25,11 +26,11 @@ train:
     weight_decay: 0.0001
     momentum: 0.9
   warmup_lr: 0
-  base_lr: 0.03
+  base_lr: 0.2
   final_lr: 0
   warmup_epochs: 4
   epochs: 200 # the sum epoch, influence the lr decay
-  batch_size: 512
+  batch_size: 256
   knn_monitor: True
   knn_interval: 1
   knn_k: 200

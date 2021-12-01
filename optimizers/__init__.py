@@ -4,8 +4,8 @@ from .lr_scheduler import LR_Scheduler
 
 
 def get_optimizer(name, model, lr, momentum, weight_decay):
-    predictor_prefix = ('module.predictor',
-                        'predictor')
+    predictor_prefix = ('module.projector_q',
+                        'predictor_q')
     parameters = [
         {
             'name': 'base',

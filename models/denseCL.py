@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 # from torchvision.models import resnet50, resnet18
 
-from .backbones import resnet18_cifar, resnet50, resnet18
+from .backbones import resnet18_cifar, resnet50, resnet18, get_backbone
 
 
 def contrastiveLoss(pos, neg, temperature=0.1):
@@ -74,19 +74,15 @@ class DenseCL(nn.Module):
         self.m = m
         self.T = T
         self.loss_lambda = loss_lambda
-        self.dim = backbone.output_dim
-        self.out_dim = feature_dim
 
         # create the encoders
-        # self.encoder_q = backbone
-        # self.encoder_k = backbone
-        #
-        # self.encoder_q.fc = nn.Sequential(projection_conv(in_dim=self.dim, out_dim=self.out_dim, s=num_grid), self.encoder_q.fc)
-        # self.encoder_k.fc = nn.Sequential(projection_conv(in_dim=self.dim, out_dim=self.out_dim, s=num_grid), self.encoder_k.fc)
+        self.backbone_q = get_backbone(backbone)
+        self.backbone_k = get_backbone(backbone)
 
-        self.backbone_q = backbone
+        self.dim = self.backbone_q.output_dim
+        self.out_dim = feature_dim
+
         self.projector_q = projection_conv(in_dim=self.dim, out_dim=self.out_dim, s=num_grid)
-        self.backbone_k = backbone
         self.projector_k = projection_conv(in_dim=self.dim, out_dim=self.out_dim, s=num_grid)
 
         self.encoder_q = nn.Sequential(
@@ -149,52 +145,52 @@ class DenseCL(nn.Module):
 
         self.queue_dense_ptr[0] = ptr
 
-    # @torch.no_grad()
-    # def _batch_shuffle_ddp(self, x):
-    #     """
-    #     Batch shuffle, for making use of BatchNorm
-    #     Only support DistributedDataParallel(DDP) model.
-    #     """
-    #     # gather from all gpus
-    #     batch_size_this = x.shape[0]
-    #     x_gather = concat_all_gather(x)
-    #     batch_size_all = x_gather.shape[0]
-    #
-    #     num_gpus = batch_size_all // batch_size_this
-    #
-    #     # random shuffle index
-    #     idx_shuffle = torch.randperm(batch_size_all).cuda()
-    #
-    #     # broadcast to all gpus
-    #     torch.distributed.broadcast(idx_shuffle, src=0)
-    #
-    #     # index for restoring
-    #     idx_unshuffle = torch.argsort(idx_shuffle)
-    #
-    #     # shuffled index for this gpu
-    #     gpu_idx = torch.distributed.get_rand()
-    #     idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx]
-    #
-    #     return x_gather[idx_this], idx_unshuffle
-    #
-    # @torch.no_grad()
-    # def _batch_unshuffle_ddp(self, x, idx_unshuffle):
-    #     """
-    #     Undo batch shuffle.
-    #     *** Only support DistributedDataParallel (DDP) model. ***
-    #     """
-    #     # gather from all gpus
-    #     batch_size_this = x.shape[0]
-    #     x_gather = concat_all_gather(x)
-    #     batch_size_all = x_gather.shape[0]
-    #
-    #     num_gpus = batch_size_all // batch_size_this
-    #
-    #     # restored index for this gpu
-    #     gpu_idx = torch.distributed.get_rank()
-    #     idx_this = idx_unshuffle.view(num_gpus, -1)[gpu_idx]
-    #
-    #     return x_gather[idx_this]
+    @torch.no_grad()
+    def _batch_shuffle_ddp(self, x):
+        """
+        Batch shuffle, for making use of BatchNorm
+        Only support DistributedDataParallel(DDP) model.
+        """
+        # gather from all gpus
+        batch_size_this = x.shape[0]
+        x_gather = concat_all_gather(x)
+        batch_size_all = x_gather.shape[0]
+
+        num_gpus = batch_size_all // batch_size_this
+
+        # random shuffle index
+        idx_shuffle = torch.randperm(batch_size_all).cuda()
+
+        # broadcast to all gpus
+        torch.distributed.broadcast(idx_shuffle, src=0)
+
+        # index for restoring
+        idx_unshuffle = torch.argsort(idx_shuffle)
+
+        # shuffled index for this gpu
+        gpu_idx = torch.distributed.get_rand()
+        idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx]
+
+        return x_gather[idx_this], idx_unshuffle
+
+    @torch.no_grad()
+    def _batch_unshuffle_ddp(self, x, idx_unshuffle):
+        """
+        Undo batch shuffle.
+        *** Only support DistributedDataParallel (DDP) model. ***
+        """
+        # gather from all gpus
+        batch_size_this = x.shape[0]
+        x_gather = concat_all_gather(x)
+        batch_size_all = x_gather.shape[0]
+
+        num_gpus = batch_size_all // batch_size_this
+
+        # restored index for this gpu
+        gpu_idx = torch.distributed.get_rank()
+        idx_this = idx_unshuffle.view(num_gpus, -1)[gpu_idx]
+
+        return x_gather[idx_this]
 
     def forward(self, img_q, img_k):
         """
@@ -263,7 +259,6 @@ class DenseCL(nn.Module):
         self._dequeue_and_enqueue(k)
         self._dequeue_and_enqueue_dense(k2)
 
-        # loss_contrastive = loss_contrastive.requires_grad_()
         return {
                 'loss': loss_contrastive,
                 'loss_contra_single': loss_contra_single,

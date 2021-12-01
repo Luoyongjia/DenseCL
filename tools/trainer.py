@@ -48,25 +48,23 @@ def train(train_loader, memo_loader, test_loader, model, optimizer, scheduler, l
             scheduler.step()
             data_dict.update({'lr': scheduler.get_lr()})
 
-            local_progress.set_postfix({"loss": data_dict['loss'].item(),
-                                        "loss_contra": data_dict['loss_contra_single'].item(),
-                                        "loss_contra_dense": data_dict['loss_contra_dense'].item()})
+            local_progress.set_postfix({"loss": data_dict['loss'].item()})
             writer.update_scalers(data_dict)
 
-        if epoch % args.evl_frequent == 0:
-            accuracy = knn_monitor(model.module.backbone_q, memo_loader, test_loader,
-                                   k=min(args.train.knn_k, len(memo_loader.dataset)))
-            logger.info(f'[{epoch} / {args.train.epochs}]: accuracy: {accuracy}, lr:{scheduler.get_lr()}')
+        accuracy = knn_monitor(model.module.backbone_q, memo_loader, test_loader,
+                               k=min(args.train.knn_k, len(memo_loader.dataset)))
         epoch_dict = {"epoch": epoch, "accuracy": accuracy}
         global_progress.set_postfix(epoch_dict)
-        writer.update_scalers(epoch_dict)
+        epoch_acc = {"accuracy": accuracy}
+        writer.update_scalers(epoch_acc)
 
         # save checkpoints
-        ckpt_path = os.path.join(args.res_dir, f'{args.name}/{args.exp_num}/checkpoints/ckpt-{epoch}.pth')
-        torch.save({
-            'epoch': epoch,
-            'model': model.state_dict(),
-        }, ckpt_path)
+        if epoch % args.save_frequent == 0:
+            ckpt_path = os.path.join(args.res_dir, f'{args.name}/{args.exp_num}/checkpoints/ckpt-{epoch}.pth')
+            torch.save({
+                'epoch': epoch,
+                'model': model.state_dict(),
+            }, ckpt_path)
 
     # save model
     model_path = os.path.join(args.res_dir, f'{args.name}/{args.exp_num}/checkpoints/ckpt-last.pth')

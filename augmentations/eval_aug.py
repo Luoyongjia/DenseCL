@@ -7,7 +7,7 @@ TINYIMAGENET = [[0.4802, 0.4481, 0.3975], [0.2770, 0.2691, 0.2821]]
 
 
 class transform_evl:
-    def __init__(self, image_size, train, normalize=CIFAR10):
+    def __init__(self, image_size, train, normalize=TINYIMAGENET):
         if train:
             self.transform = transforms.Compose([
                 transforms.RandomResizedCrop(image_size, scale=(0.08, 1.0), ratio=(3.0/4.0, 4.0/3.0), interpolation=Image.BICUBIC),

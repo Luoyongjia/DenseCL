@@ -59,7 +59,7 @@ class writer(object):
             if isinstance(value, Tensor):
                 ordered_dict[key] = value.item()
             if self.counter.get(key) is None:
-                self.counter[key] =1
+                self.counter[key] = 1
             else:
                 self.counter[key] += 1
 

@@ -22,14 +22,14 @@ model:
 train:
   optimizer:
     name: sgd
-    weight_decay: 0.0005
+    weight_decay: 0.0001
     momentum: 0.9
   warmup_lr: 0
-  base_lr: 0.1
+  base_lr: 0.03
   final_lr: 0
   warmup_epochs: 4
   epochs: 200 # the sum epoch, influence the lr decay
-  batch_size: 128
+  batch_size: 256
   knn_monitor: True
   knn_interval: 1
   knn_k: 10

@@ -30,21 +30,24 @@ def train(train_loader, memo_loader, test_loader, model, optimizer, scheduler, l
     logger.info(f'====>Training {args.train.epochs} epoch. ')
     print(f'====>Training {args.train.epochs} epoch. ')
 
-    accuracy = 0
+    model.train()
     start_time = time.time()
 
     # start training
     global_progress = tqdm(range(0, args.train.epochs), desc='Training')
     for epoch in global_progress:
-        model.train()
 
         local_progress = tqdm(train_loader, desc=f'Epoch {epoch}/{args.train.epochs}')
         for idx, ((img_q, img_k), labels) in enumerate(local_progress):
-            model.zero_grad()
+            img_q = img_q.to(args.device, non_blocking=True)
+            img_k = img_k.to(args.device, non_blocking=True)
             data_dict = model.forward(img_q, img_k)
             loss = data_dict['loss'].mean()
+
+            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
             scheduler.step()
             data_dict.update({'lr': scheduler.get_lr()})
 

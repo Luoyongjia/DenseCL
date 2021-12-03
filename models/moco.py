@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import resnet50, resnet18
 
-from .backbones import resnet18_cifar, get_backbone
+from .backbones import get_backbone
 
 
 def contrastiveLoss(pos, neg, temperature=0.1):
@@ -22,6 +21,12 @@ def contrastiveLoss(pos, neg, temperature=0.1):
     losses = criterion(logits, labels)
 
     return losses
+    # pos = torch.exp(pos/temperature)
+    # neg = torch.exp(neg/temperature)
+    #
+    # denominator = pos + neg
+    #
+    # return torch.mean(-torch.log(torch.div(pos, denominator)))
 
 
 class neck_Linear(nn.Module):
@@ -38,7 +43,8 @@ class neck_Linear(nn.Module):
     def forward(self, x):
         if self.avgpool:
             x = self.avgpool(x)
-        x = self.fc(x.view(x.size(0), -1))
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
         return x
 
 
@@ -190,7 +196,7 @@ class MoCo(nn.Module):
         # positive logits: Nx1
         l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
         # negative logits: NxK
-        l_neg = torch.einsum('nc, ck->nk', [q, self.queue.clone().detach()])
+        l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
 
         # logits: Nx(1+K)
         losses = contrastiveLoss(l_pos, l_neg, temperature=self.T)
@@ -209,9 +215,6 @@ def concat_all_gather(tensor):
     # tensors_gather = [torch.ones_like(tensor)
     #                   for _ in range(torch.distributed.get_world_size())]
     # torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
-    # tensors_gather = [torch.ones_like(tensor)]
-
     # output = torch.cat(tensors_gather, dim=0)
-    output = torch.ones_like(tensor)
-    return output
+    return tensor
 

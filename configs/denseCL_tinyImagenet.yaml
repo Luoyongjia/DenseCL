@@ -26,7 +26,7 @@ train:
     weight_decay: 0.0001
     momentum: 0.9
   warmup_lr: 0
-  base_lr: 0.2
+  base_lr: 0.03
   final_lr: 0
   warmup_epochs: 4
   epochs: 200 # the sum epoch, influence the lr decay
